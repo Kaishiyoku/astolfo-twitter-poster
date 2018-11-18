@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use Abraham\TwitterOAuth\TwitterOAuth;
+use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PostImage extends Command
 {
@@ -12,7 +14,7 @@ class PostImage extends Command
      *
      * @var string
      */
-    protected $signature = 'astolfo:post';
+    protected $signature = 'astolfo:post {--dry}';
 
     /**
      * The console command description.
@@ -38,23 +40,38 @@ class PostImage extends Command
      */
     public function handle()
     {
+        $dryRun = $this->option('dry');
+
+        $minimumDate = Carbon::now()->subDays(env('NUMBER_OF_DAYS_UNTIL_VALID_REPOST'))->startOfDay();
         $imageData = json_decode(file_get_contents('https://astolfo.rocks/api/v1/images/random/safe'));
+        $postLogs = DB::table('post_logs')->where('external_id', $imageData->external_id)->whereDate('created_at', '>=', $minimumDate->toDateString());
 
-        $temporaryFile = tmpfile();
-        fwrite($temporaryFile, file_get_contents($imageData->url));
-        $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
+        if ($postLogs->count() > 0) {
+            return $this->handle();
+        }
 
-        $connection = new TwitterOAuth(env('TWITTER_API_CONSUMER_KEY'), env('TWITTER_AP_CONSUMER_SECRET_KEY'), env('TWITTER_API_ACCESS_TOKEN'), env('TWITTER_API_ACCESS_TOKEN_SECRET'));
+        if (!$dryRun) {
+            $temporaryFile = tmpfile();
+            fwrite($temporaryFile, file_get_contents($imageData->url));
+            $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
 
-        $imageMedia = $connection->upload('media/upload', array('media' => $temporaryFileMetaData['uri']));
+            $connection = new TwitterOAuth(env('TWITTER_API_CONSUMER_KEY'), env('TWITTER_AP_CONSUMER_SECRET_KEY'), env('TWITTER_API_ACCESS_TOKEN'), env('TWITTER_API_ACCESS_TOKEN_SECRET'));
 
-        $status = env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->external_id . " \n "
-            . "\n"
-            . env('TWITTER_STATUS_HASHTAGS');
+            $imageMedia = $connection->upload('media/upload', array('media' => $temporaryFileMetaData['uri']));
 
-        $tweet = $connection->post('statuses/update', [
-            'status' => $status,
-            'media_ids' => $imageMedia->media_id,
+            $status = env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->external_id . " \n "
+                . "\n"
+                . env('TWITTER_STATUS_HASHTAGS');
+
+            $tweet = $connection->post('statuses/update', [
+                'status' => $status,
+                'media_ids' => $imageMedia->media_id,
+            ]);
+        }
+
+        DB::table('post_logs')->insert([
+            'external_id' => $imageData->external_id,
+            'created_at' => Carbon::now(),
         ]);
     }
 }
