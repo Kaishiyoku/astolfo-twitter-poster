@@ -24,6 +24,6 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('astolfo:post')->daily()->at('20:00');
+        $schedule->command('astolfo:post')->daily()->at(env('POST_TIME'));
     }
 }
