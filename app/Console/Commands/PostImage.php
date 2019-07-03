@@ -6,6 +6,7 @@ use Abraham\TwitterOAuth\TwitterOAuth;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use RestCord\DiscordClient;
 
 class PostImage extends Command
 {
@@ -66,6 +67,13 @@ class PostImage extends Command
             $tweet = $connection->post('statuses/update', [
                 'status' => $status,
                 'media_ids' => $imageMedia->media_id,
+            ]);
+
+            $discordClient = new DiscordClient(['token' => env('DISCORD_BOT_TOKEN')]);
+
+            $discordClient->channel->createMessage([
+                'channel.id' => (int) env('DISCORD_CHANNEL_ID'),
+                'content' => 'https://twitter.com/Astolfo_is_luv/status/' . $tweet->id,
             ]);
         }
 
