@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Abraham\TwitterOAuth\TwitterOAuth;
+use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -44,8 +45,10 @@ class PostImage extends Command
         $dryRun = $this->option('dry');
 
         $minimumDate = Carbon::now()->subDays(env('NUMBER_OF_DAYS_UNTIL_VALID_REPOST'))->startOfDay();
-        $imageData = json_decode(file_get_contents('https://astolfo.rocks/api/v1/images/random/safe'));
-        $postLogs = DB::table('post_logs')->where('external_id', $imageData->external_id)->whereDate('created_at', '>=', $minimumDate->toDateString());
+        $imageData = $this->getRandomImageData();
+        $postLogs = DB::table('post_logs')
+            ->where('external_id', $imageData->external_id)
+            ->whereDate('created_at', '>=', $minimumDate->toDateString());
 
         if ($postLogs->count() > 0) {
             return $this->handle();
@@ -81,5 +84,16 @@ class PostImage extends Command
             'external_id' => $imageData->external_id,
             'created_at' => Carbon::now(),
         ]);
+    }
+
+    /**
+     * @return mixed
+     */
+    private function getRandomImageData()
+    {
+        $client = new Client();
+        $response = $client->get('https://astolfo.rocks/api/v1/images/random/safe');
+
+        return json_decode($response->getBody()->getContents(), false, 512, JSON_THROW_ON_ERROR);
     }
 }
