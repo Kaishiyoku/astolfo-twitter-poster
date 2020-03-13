@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Libraries\ImageData;
 use Log;
 use Abraham\TwitterOAuth\TwitterOAuth;
 use GuzzleHttp\Client;
@@ -49,8 +50,9 @@ class PostImage extends Command
 
         $minimumDate = Carbon::now()->subDays(env('NUMBER_OF_DAYS_UNTIL_VALID_REPOST'))->startOfDay();
         $imageData = $this->getRandomImageData();
+
         $postLogs = DB::table('post_logs')
-            ->where('external_id', $imageData->external_id)
+            ->where('external_id', $imageData->getExternalId())
             ->whereDate('created_at', '>=', $minimumDate->toDateString());
 
         if ($postLogs->count() > 0) {
@@ -59,7 +61,7 @@ class PostImage extends Command
 
         if (!$dryRun) {
             $temporaryFile = tmpfile();
-            fwrite($temporaryFile, file_get_contents($imageData->url));
+            fwrite($temporaryFile, file_get_contents($imageData->getUrl()));
             $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
 
             $connection = $this->getTwitterConnection();
@@ -81,27 +83,27 @@ class PostImage extends Command
         }
 
         DB::table('post_logs')->insert([
-            'external_id' => $imageData->external_id,
+            'external_id' => $imageData->getExternalId(),
             'created_at' => Carbon::now(),
         ]);
     }
 
     /**
-     * @return mixed
+     * @return ImageData
      */
-    private function getRandomImageData()
+    private function getRandomImageData(): ImageData
     {
         $client = new Client();
         $response = $client->get('https://astolfo.rocks/api/v1/images/random/safe');
 
-        return json_decode($response->getBody()->getContents(), false, 512, JSON_THROW_ON_ERROR);
+        return ImageData::fromJson($response->getBody()->getContents());
     }
 
     /**
      * @param $tweet
      * @return string
      */
-    private function getTwitterUserPostUrlFor($tweet)
+    private function getTwitterUserPostUrlFor($tweet): string
     {
         $twitterUserName = env('TWITTER_USER_NAME');
 
@@ -111,7 +113,7 @@ class PostImage extends Command
     /**
      * @return TwitterOAuth
      */
-    private function getTwitterConnection()
+    private function getTwitterConnection(): TwitterOAuth
     {
         return new TwitterOAuth(
             env('TWITTER_API_CONSUMER_KEY'),
@@ -122,12 +124,12 @@ class PostImage extends Command
     }
 
     /**
-     * @param $imageData
+     * @param ImageData $imageData
      * @return string
      */
-    private function getTwitterStatusContent($imageData)
+    private function getTwitterStatusContent(ImageData $imageData): string
     {
-        return env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->external_id . " \n "
+        return env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->getExternalId() . " \n "
         . "\n"
         . env('TWITTER_STATUS_HASHTAGS');
     }
