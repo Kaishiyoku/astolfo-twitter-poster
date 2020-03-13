@@ -2,12 +2,15 @@
 
 namespace App\Console\Commands;
 
+use Log;
 use Abraham\TwitterOAuth\TwitterOAuth;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use RestCord\DiscordClient;
+use Woeler\DiscordPhp\Exception\DiscordInvalidResponseException;
+use Woeler\DiscordPhp\Message\DiscordTextMessage;
+use Woeler\DiscordPhp\Webhook\DiscordWebhook;
 
 class PostImage extends Command
 {
@@ -23,7 +26,7 @@ class PostImage extends Command
      *
      * @var string
      */
-    protected $description = 'Posts an image of Astolfo on Twitter.';
+    protected $description = 'Posts an image of Astolfo on Twitter and Discord.';
 
     /**
      * Create a new command instance.
@@ -59,25 +62,22 @@ class PostImage extends Command
             fwrite($temporaryFile, file_get_contents($imageData->url));
             $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
 
-            $connection = new TwitterOAuth(env('TWITTER_API_CONSUMER_KEY'), env('TWITTER_AP_CONSUMER_SECRET_KEY'), env('TWITTER_API_ACCESS_TOKEN'), env('TWITTER_API_ACCESS_TOKEN_SECRET'));
-
-            $imageMedia = $connection->upload('media/upload', array('media' => $temporaryFileMetaData['uri']));
-
-            $status = env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->external_id . " \n "
-                . "\n"
-                . env('TWITTER_STATUS_HASHTAGS');
+            $connection = $this->getTwitterConnection();
+            $imageMedia = $connection->upload('media/upload', ['media' => $temporaryFileMetaData['uri']]);
 
             $tweet = $connection->post('statuses/update', [
-                'status' => $status,
+                'status' => $this->getTwitterStatusContent($imageData),
                 'media_ids' => $imageMedia->media_id,
             ]);
 
-            $discordClient = new DiscordClient(['token' => env('DISCORD_BOT_TOKEN')]);
+            try {
+                $message = (new DiscordTextMessage())->setContent($this->getTwitterUserPostUrlFor($tweet));
 
-            $discordClient->channel->createMessage([
-                'channel.id' => (int) env('DISCORD_CHANNEL_ID'),
-                'content' => 'https://twitter.com/Astolfo_is_luv/status/' . $tweet->id,
-            ]);
+                $webhook = new DiscordWebhook(env('DISCORD_WEBHOOK_URL'));
+                $webhook->send($message);
+            } catch (DiscordInvalidResponseException $e) {
+                Log::error("Couldn't post to Discord: {$this->getTwitterUserPostUrlFor($tweet)}");
+            }
         }
 
         DB::table('post_logs')->insert([
@@ -95,5 +95,40 @@ class PostImage extends Command
         $response = $client->get('https://astolfo.rocks/api/v1/images/random/safe');
 
         return json_decode($response->getBody()->getContents(), false, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param $tweet
+     * @return string
+     */
+    private function getTwitterUserPostUrlFor($tweet)
+    {
+        $twitterUserName = env('TWITTER_USER_NAME');
+
+        return "https://twitter.com/{$twitterUserName}/status/{$tweet->id}";
+    }
+
+    /**
+     * @return TwitterOAuth
+     */
+    private function getTwitterConnection()
+    {
+        return new TwitterOAuth(
+            env('TWITTER_API_CONSUMER_KEY'),
+            env('TWITTER_AP_CONSUMER_SECRET_KEY'),
+            env('TWITTER_API_ACCESS_TOKEN'),
+            env('TWITTER_API_ACCESS_TOKEN_SECRET')
+        );
+    }
+
+    /**
+     * @param $imageData
+     * @return string
+     */
+    private function getTwitterStatusContent($imageData)
+    {
+        return env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->external_id . " \n "
+        . "\n"
+        . env('TWITTER_STATUS_HASHTAGS');
     }
 }
