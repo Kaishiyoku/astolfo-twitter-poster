@@ -11,4 +11,8 @@
 |
 */
 
-$router->get('/', 'HomeController@index');
+use Illuminate\Support\Carbon;
+
+$router->get('/', function () use ($router) {
+    return response()->json((new Carbon())->toDateTimeString());
+});
