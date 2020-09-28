@@ -8,7 +8,6 @@ use Abraham\TwitterOAuth\TwitterOAuth;
 use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Woeler\DiscordPhp\Exception\DiscordInvalidResponseException;
 use Woeler\DiscordPhp\Message\DiscordTextMessage;
 use Woeler\DiscordPhp\Webhook\DiscordWebhook;
@@ -46,12 +45,14 @@ class PostImage extends Command
      */
     public function handle()
     {
+        $db = app('db');
+
         $dryRun = $this->option('dry');
 
         $minimumDate = Carbon::now()->subDays(env('NUMBER_OF_DAYS_UNTIL_VALID_REPOST'))->startOfDay();
         $imageData = $this->getRandomImageData();
 
-        $postLogs = DB::table('post_logs')
+        $postLogs = $db->table('post_logs')
             ->where('external_id', $imageData->getExternalId())
             ->whereDate('created_at', '>=', $minimumDate->toDateString());
 
@@ -82,7 +83,7 @@ class PostImage extends Command
             }
         }
 
-        DB::table('post_logs')->insert([
+        $db->table('post_logs')->insert([
             'external_id' => $imageData->getExternalId(),
             'created_at' => Carbon::now(),
         ]);
