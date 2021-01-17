@@ -2,6 +2,7 @@
 
 namespace App\Libraries;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
 class ImageData
@@ -40,6 +41,11 @@ class ImageData
      * @var string|null
      */
     private $source;
+
+    /**
+     * @var string|null;
+     */
+    private $imageFileData;
 
     /**
      * @return int
@@ -97,18 +103,29 @@ class ImageData
         return $this->source;
     }
 
-    public static function fromJson(string $jsonStr): self
+    /**
+     * @return string|null
+     */
+    public function getImageFileData(): ?string
     {
-        $values = json_decode($jsonStr, true, 512, JSON_THROW_ON_ERROR);
+        return $this->imageFileData;
+    }
 
+    public function setImageFileData(?string $imageFileData): void
+    {
+        $this->imageFileData = $imageFileData;
+    }
+
+    public static function fromJson(array $jsonData): self
+    {
         $imageData = new ImageData();
-        $imageData->externalId = $values['external_id'];
-        $imageData->url = $values['url'];
-        $imageData->rating = $values['rating'];
-        $imageData->createdAt = Carbon::parse($values['created_at']);
-        $imageData->updatedAt = Carbon::parse($values['updated_at']);
-        $imageData->views = $values['views'];
-        $imageData->source = $values['source'];
+        $imageData->externalId = Arr::get($jsonData, 'external_id');
+        $imageData->url = Arr::get($jsonData, 'url');
+        $imageData->rating = Arr::get($jsonData, 'rating');
+        $imageData->createdAt = Carbon::parse(Arr::get($jsonData, 'created_at'));
+        $imageData->updatedAt = Carbon::parse(Arr::get($jsonData, 'updated_at'));
+        $imageData->views = Arr::get($jsonData, 'views');
+        $imageData->source = Arr::get($jsonData, 'source');
 
         return $imageData;
     }

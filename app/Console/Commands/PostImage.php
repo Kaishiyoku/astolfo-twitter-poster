@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Libraries\ImageData;
+use Illuminate\Support\Facades\Http;
 use Log;
 use Abraham\TwitterOAuth\TwitterOAuth;
-use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Woeler\DiscordPhp\Exception\DiscordInvalidResponseException;
@@ -62,7 +62,7 @@ class PostImage extends Command
 
         if (!$dryRun) {
             $temporaryFile = tmpfile();
-            fwrite($temporaryFile, file_get_contents($imageData->getUrl()));
+            fwrite($temporaryFile, $imageData->getImageFileData());
             $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
 
             $connection = $this->getTwitterConnection();
@@ -94,10 +94,12 @@ class PostImage extends Command
      */
     private function getRandomImageData(): ImageData
     {
-        $client = new Client();
-        $response = $client->get('https://astolfo.rocks/api/v1/images/random/safe');
+        $jsonData = Http::get('https://astolfo.rocks/api/v1/images/random/safe')->json();
 
-        return ImageData::fromJson($response->getBody()->getContents());
+        $imageData = ImageData::fromJson($jsonData);
+        $imageData->setImageFileData(Http::get("https://astolfo.rocks/api/v1/images/{$jsonData['external_id']}/data")->body());
+
+        return $imageData;
     }
 
     /**
