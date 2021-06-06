@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Libraries\ImageData;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Log;
 use Abraham\TwitterOAuth\TwitterOAuth;
@@ -97,7 +98,9 @@ class PostImage extends Command
         $jsonData = Http::get('https://astolfo.rocks/api/v1/images/random/safe')->json();
 
         $imageData = ImageData::fromJson($jsonData);
-        $imageData->setImageFileData(Http::get("https://astolfo.rocks/api/v1/images/{$jsonData['external_id']}/data")->body());
+        $fileExtension = File::extension($imageData->getUrl());
+
+        $imageData->setImageFileData(Http::get("https://astolfo.rocks/astolfo/{$imageData->getExternalId()}.{$fileExtension}")->body());
 
         return $imageData;
     }
