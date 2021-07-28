@@ -10,7 +10,6 @@
         "abraham/twitteroauth": "^2.0.2",
         "guzzlehttp/guzzle": "^7.3.0",
         "laravel/lumen-framework": "^8.2.4",
-        "league/flysystem": "^2.1.1",
         "vlucas/phpdotenv": "^5.3.0",
         "woeler/phpdiscord": "^3.0.0"
     },

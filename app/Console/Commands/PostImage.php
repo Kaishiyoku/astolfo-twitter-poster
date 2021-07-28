@@ -75,7 +75,10 @@ class PostImage extends Command
             ]);
 
             try {
-                $message = (new DiscordTextMessage())->setContent($this->getTwitterUserPostUrlFor($tweet));
+                $message = new DiscordTextMessage();
+                $message->setUsername('Astolfo Image Poster');
+                $message->setAvatar('https://i.imgur.com/W7Dv18c.jpg');
+                $message->setContent($this->getTwitterUserPostUrlFor($tweet));
 
                 $webhook = new DiscordWebhook(env('DISCORD_WEBHOOK_URL'));
                 $webhook->send($message);
@@ -88,6 +91,8 @@ class PostImage extends Command
             'external_id' => $imageData->getExternalId(),
             'created_at' => Carbon::now(),
         ]);
+
+        return 0;
     }
 
     /**
