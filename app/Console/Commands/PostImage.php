@@ -2,13 +2,15 @@
 
 namespace App\Console\Commands;
 
+use Abraham\TwitterOAuth\TwitterOAuth;
 use App\Libraries\ImageData;
+use Illuminate\Console\Command;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Log;
-use Abraham\TwitterOAuth\TwitterOAuth;
-use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Woeler\DiscordPhp\Exception\DiscordInvalidResponseException;
 use Woeler\DiscordPhp\Message\DiscordTextMessage;
 use Woeler\DiscordPhp\Webhook\DiscordWebhook;
@@ -30,13 +32,20 @@ class PostImage extends Command
     protected $description = 'Posts an image of Astolfo on Twitter and Discord.';
 
     /**
+     * @var DatabaseManager
+     */
+    protected $db;
+
+    /**
      * Create a new command instance.
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(DatabaseManager $db)
     {
         parent::__construct();
+
+        $this->db = $db;
     }
 
     /**
@@ -46,48 +55,24 @@ class PostImage extends Command
      */
     public function handle()
     {
-        $db = app('db');
-
         $dryRun = $this->option('dry');
 
         $minimumDate = Carbon::now()->subDays(env('NUMBER_OF_DAYS_UNTIL_VALID_REPOST'))->startOfDay();
         $imageData = $this->getRandomImageData();
 
-        $postLogs = $db->table('post_logs')
+        $duplicatePostLogs = $this->db->table('post_logs')
             ->where('external_id', $imageData->getExternalId())
             ->whereDate('created_at', '>=', $minimumDate->toDateString());
 
-        if ($postLogs->count() > 0) {
+        if ($duplicatePostLogs->count() > 0) {
             return $this->handle();
         }
 
         if (!$dryRun) {
-            $temporaryFile = tmpfile();
-            fwrite($temporaryFile, $imageData->getImageFileData());
-            $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
-
-            $connection = $this->getTwitterConnection();
-            $imageMedia = $connection->upload('media/upload', ['media' => $temporaryFileMetaData['uri']]);
-
-            $tweet = $connection->post('statuses/update', [
-                'status' => $this->getTwitterStatusContent($imageData),
-                'media_ids' => $imageMedia->media_id,
-            ]);
-
-            try {
-                $message = new DiscordTextMessage();
-                $message->setUsername('Astolfo Image Poster');
-                $message->setAvatar('https://i.imgur.com/W7Dv18c.jpg');
-                $message->setContent($this->getTwitterUserPostUrlFor($tweet));
-
-                $webhook = new DiscordWebhook(env('DISCORD_WEBHOOK_URL'));
-                $webhook->send($message);
-            } catch (DiscordInvalidResponseException $e) {
-                Log::error("Couldn't post to Discord: {$this->getTwitterUserPostUrlFor($tweet)}");
-            }
+            $this->postImageOnTwitterAndDiscord($imageData);
         }
 
-        $db->table('post_logs')->insert([
+        $this->db->table('post_logs')->insert([
             'external_id' => $imageData->getExternalId(),
             'created_at' => Carbon::now(),
         ]);
@@ -114,7 +99,7 @@ class PostImage extends Command
      * @param $tweet
      * @return string
      */
-    private function getTwitterUserPostUrlFor($tweet): string
+    private function getTwitterUserPostUrlForTweet($tweet): string
     {
         $twitterUserName = env('TWITTER_USER_NAME');
 
@@ -143,5 +128,37 @@ class PostImage extends Command
         return env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->getExternalId() . " \n "
         . "\n"
         . env('TWITTER_STATUS_HASHTAGS');
+    }
+
+    /**
+     * @param ImageData $imageData
+     * @return void
+     */
+    private function postImageOnTwitterAndDiscord(ImageData $imageData): void {
+        $temporaryFile = tmpfile();
+        fwrite($temporaryFile, $imageData->getImageFileData());
+        $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
+
+        $twitterConnection = $this->getTwitterConnection();
+        $imageMedia = $twitterConnection->upload('media/upload', ['media' => Arr::get($temporaryFileMetaData, 'uri')]);
+
+        $tweet = $twitterConnection->post('statuses/update', [
+            'status' => $this->getTwitterStatusContent($imageData),
+            'media_ids' => $imageMedia->media_id,
+        ]);
+
+        $twitterUserPostUrl = $this->getTwitterUserPostUrlForTweet($tweet);
+
+        try {
+            $discordMessage = new DiscordTextMessage();
+            $discordMessage->setUsername('Astolfo Image Poster');
+            $discordMessage->setAvatar('https://i.imgur.com/W7Dv18c.jpg');
+            $discordMessage->setContent($twitterUserPostUrl);
+
+            $discordWebhook = new DiscordWebhook(env('DISCORD_WEBHOOK_URL'));
+            $discordWebhook->send($discordMessage);
+        } catch (DiscordInvalidResponseException $e) {
+            Log::error("Couldn't post to Discord: {$twitterUserPostUrl}");
+        }
     }
 }
