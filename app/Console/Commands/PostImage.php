@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Abraham\TwitterOAuth\TwitterOAuth;
-use App\Libraries\ImageData;
+use App\Data\ImageData;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Arr;
@@ -34,7 +34,7 @@ class PostImage extends Command
     /**
      * @var DatabaseManager
      */
-    protected $db;
+    protected DatabaseManager $db;
 
     /**
      * Create a new command instance.
@@ -106,9 +106,6 @@ class PostImage extends Command
         return "https://twitter.com/{$twitterUserName}/status/{$tweet->id}";
     }
 
-    /**
-     * @return TwitterOAuth
-     */
     private function getTwitterConnection(): TwitterOAuth
     {
         return new TwitterOAuth(
@@ -119,10 +116,6 @@ class PostImage extends Command
         );
     }
 
-    /**
-     * @param ImageData $imageData
-     * @return string
-     */
     private function getTwitterStatusContent(ImageData $imageData): string
     {
         return env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->getExternalId() . " \n "
@@ -130,10 +123,6 @@ class PostImage extends Command
         . env('TWITTER_STATUS_HASHTAGS');
     }
 
-    /**
-     * @param ImageData $imageData
-     * @return void
-     */
     private function postImageOnTwitterAndDiscord(ImageData $imageData): void {
         $temporaryFile = tmpfile();
         fwrite($temporaryFile, $imageData->getImageFileData());

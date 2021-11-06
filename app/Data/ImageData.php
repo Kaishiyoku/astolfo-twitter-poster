@@ -1,111 +1,63 @@
 <?php
 
-namespace App\Libraries;
+namespace App\Data;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
 class ImageData
 {
-    /**
-     * @var int
-     */
-    private $externalId;
+    private int $externalId;
 
-    /**
-     * @var string
-     */
-    private $url;
+    private string $url;
 
-    /**
-     * @var string
-     */
-    private $rating;
+    private string $rating;
 
-    /**
-     * @var Carbon
-     */
-    private $createdAt;
+    private Carbon $createdAt;
 
-    /**
-     * @var Carbon
-     */
-    private $updatedAt;
+    private Carbon $updatedAt;
 
-    /**
-     * @var int
-     */
-    private $views;
+    private int $views;
 
-    /**
-     * @var string|null
-     */
-    private $source;
+    private ?string $source;
 
-    /**
-     * @var string|null;
-     */
-    private $imageFileData;
+    private ?string $imageFileData;
 
-    /**
-     * @return int
-     */
     public function getExternalId(): int
     {
         return $this->externalId;
     }
 
-    /**
-     * @return string
-     */
     public function getUrl(): string
     {
         return $this->url;
     }
 
-    /**
-     * @return string
-     */
     public function getRating(): string
     {
         return $this->rating;
     }
 
-    /**
-     * @return Carbon
-     */
     public function getCreatedAt(): Carbon
     {
         return $this->createdAt;
     }
 
-    /**
-     * @return Carbon
-     */
     public function getUpdatedAt(): Carbon
     {
         return $this->updatedAt;
     }
 
-    /**
-     * @return int
-     */
     public function getViews(): int
     {
         return $this->views;
     }
 
-    /**
-     * @return string|null
-     */
     public function getSource(): ?string
     {
         return $this->source;
     }
 
-    /**
-     * @return string|null
-     */
     public function getImageFileData(): ?string
     {
         return $this->imageFileData;
