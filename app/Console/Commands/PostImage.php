@@ -67,7 +67,7 @@ class PostImage extends Command
         $imageData = $this->getRandomImageData();
 
         $duplicatePostLogs = $this->db->table('post_logs')
-            ->where('external_id', $imageData->getExternalId())
+            ->where('id', $imageData->getId())
             ->whereDate('created_at', '>=', $minimumDate->toDateString());
 
         if ($duplicatePostLogs->count() > 0) {
@@ -79,7 +79,7 @@ class PostImage extends Command
         }
 
         $this->db->table('post_logs')->insert([
-            'external_id' => $imageData->getExternalId(),
+            'image_id' => $imageData->getId(),
             'created_at' => Carbon::now(),
         ]);
 
@@ -96,7 +96,7 @@ class PostImage extends Command
         $imageData = ImageData::fromJson($jsonData);
         $fileExtension = File::extension($imageData->getUrl());
 
-        $imageData->setImageFileData(Http::get("{$this->astolfoBaseUrl}/astolfo/{$imageData->getExternalId()}.{$fileExtension}")->body());
+        $imageData->setImageFileData(Http::get("{$this->astolfoBaseUrl}/astolfo/{$imageData->getId()}.{$fileExtension}")->body());
 
         return $imageData;
     }

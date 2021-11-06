@@ -7,7 +7,7 @@ use Illuminate\Support\Carbon;
 
 class ImageData
 {
-    private int $externalId;
+    private int $id;
 
     private string $url;
 
@@ -23,9 +23,9 @@ class ImageData
 
     private ?string $imageFileData;
 
-    public function getExternalId(): int
+    public function getId(): int
     {
-        return $this->externalId;
+        return $this->id;
     }
 
     public function getUrl(): string
@@ -71,7 +71,7 @@ class ImageData
     public static function fromJson(array $jsonData): self
     {
         $imageData = new ImageData();
-        $imageData->externalId = Arr::get($jsonData, 'external_id');
+        $imageData->id = Arr::get($jsonData, 'id');
         $imageData->url = Arr::get($jsonData, 'url');
         $imageData->rating = Arr::get($jsonData, 'rating');
         $imageData->createdAt = Carbon::parse(Arr::get($jsonData, 'created_at'));
