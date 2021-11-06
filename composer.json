@@ -8,6 +8,7 @@
         "php": "^7.4|^8.0",
         "ext-json": "*",
         "abraham/twitteroauth": "^2.0.2",
+        "doctrine/dbal": "^3.1",
         "guzzlehttp/guzzle": "^7.3.0",
         "laravel/lumen-framework": "^8.2.4",
         "vlucas/phpdotenv": "^5.3.0",
