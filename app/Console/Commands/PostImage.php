@@ -94,9 +94,8 @@ class PostImage extends Command
         $jsonData = Http::get("{$this->astolfoBaseUrl}/api/v1/images/random/safe")->json();
 
         $imageData = ImageData::fromJson($jsonData);
-        $fileExtension = File::extension($imageData->getUrl());
 
-        $imageData->setImageFileData(Http::get("{$this->astolfoBaseUrl}/astolfo/{$imageData->getId()}.{$fileExtension}")->body());
+        $imageData->setImageFileData(Http::get("{$this->astolfoBaseUrl}/astolfo/{$imageData->getId()}.{$imageData->getFileExtension()}")->body());
 
         return $imageData;
     }
