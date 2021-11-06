@@ -37,6 +37,11 @@ class PostImage extends Command
     protected DatabaseManager $db;
 
     /**
+     * @var string
+     */
+    protected $astolfoBaseUrl;
+
+    /**
      * Create a new command instance.
      *
      * @return void
@@ -46,6 +51,7 @@ class PostImage extends Command
         parent::__construct();
 
         $this->db = $db;
+        $this->astolfoBaseUrl = env('ASTOLFO_BASE_URL');
     }
 
     /**
@@ -85,12 +91,12 @@ class PostImage extends Command
      */
     private function getRandomImageData(): ImageData
     {
-        $jsonData = Http::get('https://astolfo.rocks/api/v1/images/random/safe')->json();
+        $jsonData = Http::get("{$this->astolfoBaseUrl}/api/v1/images/random/safe")->json();
 
         $imageData = ImageData::fromJson($jsonData);
         $fileExtension = File::extension($imageData->getUrl());
 
-        $imageData->setImageFileData(Http::get("https://astolfo.rocks/astolfo/{$imageData->getExternalId()}.{$fileExtension}")->body());
+        $imageData->setImageFileData(Http::get("{$this->astolfoBaseUrl}/astolfo/{$imageData->getExternalId()}.{$fileExtension}")->body());
 
         return $imageData;
     }
@@ -118,9 +124,7 @@ class PostImage extends Command
 
     private function getTwitterStatusContent(ImageData $imageData): string
     {
-        return env('ASTOLFO_IMAGE_DETAILS_BASE_URL') . $imageData->getExternalId() . " \n "
-        . "\n"
-        . env('TWITTER_STATUS_HASHTAGS');
+        return env('TWITTER_STATUS_HASHTAGS');
     }
 
     private function postImageOnTwitterAndDiscord(ImageData $imageData): void {
