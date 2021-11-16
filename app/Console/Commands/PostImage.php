@@ -142,10 +142,12 @@ class PostImage extends Command
         $twitterUserPostUrl = $this->getTwitterUserPostUrlForTweet($tweet);
 
         try {
+            $content = $twitterUserPostUrl . (empty($imageData->getSource()) ? '' : $sourceContent);
+
             $discordMessage = new DiscordTextMessage();
             $discordMessage->setUsername('Astolfo Image Poster');
             $discordMessage->setAvatar('https://i.imgur.com/W7Dv18c.jpg');
-            $discordMessage->setContent($twitterUserPostUrl);
+            $discordMessage->setContent($content);
 
             $discordWebhook = new DiscordWebhook(env('DISCORD_WEBHOOK_URL'));
             $discordWebhook->send($discordMessage);
