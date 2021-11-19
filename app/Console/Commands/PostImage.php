@@ -142,6 +142,7 @@ class PostImage extends Command
         $twitterUserPostUrl = $this->getTwitterUserPostUrlForTweet($tweet);
 
         try {
+            $sourceContent = '\n\n' . 'Source: ' . $imageData->getSource();
             $content = $twitterUserPostUrl . (empty($imageData->getSource()) ? '' : $sourceContent);
 
             $discordMessage = new DiscordTextMessage();
