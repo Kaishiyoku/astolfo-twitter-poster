@@ -8,7 +8,6 @@ use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Log;
 use Woeler\DiscordPhp\Exception\DiscordInvalidResponseException;
@@ -42,6 +41,11 @@ class PostImage extends Command
     protected $astolfoBaseUrl;
 
     /**
+     * @var int
+     */
+    protected $numberOfDaysUntilValidRepost;
+
+    /**
      * Create a new command instance.
      *
      * @return void
@@ -52,6 +56,7 @@ class PostImage extends Command
 
         $this->db = $db;
         $this->astolfoBaseUrl = env('ASTOLFO_BASE_URL');
+        $this->numberOfDaysUntilValidRepost = env('NUMBER_OF_DAYS_UNTIL_VALID_REPOST', 365);
     }
 
     /**
@@ -61,20 +66,22 @@ class PostImage extends Command
      */
     public function handle()
     {
-        $dryRun = $this->option('dry');
+        $minimumCreatedAt = Carbon::now()
+            ->subDays($this->numberOfDaysUntilValidRepost)
+            ->startOfDay();
 
-        $minimumDate = Carbon::now()->subDays(env('NUMBER_OF_DAYS_UNTIL_VALID_REPOST'))->startOfDay();
         $imageData = $this->getRandomImageData();
 
-        $duplicatePostLogs = $this->db->table('post_logs')
+        $duplicatePostLogsCount = $this->db->table('post_logs')
             ->where('id', $imageData->getId())
-            ->whereDate('created_at', '>=', $minimumDate->toDateString());
+            ->whereDate('created_at', '>=', $minimumCreatedAt->toDateString())
+            ->count();
 
-        if ($duplicatePostLogs->count() > 0) {
+        if ($duplicatePostLogsCount > 0) {
             return $this->handle();
         }
 
-        if (!$dryRun) {
+        if (!$this->isDryRun()) {
             $this->postImageOnTwitterAndDiscord($imageData);
         }
 
@@ -83,7 +90,7 @@ class PostImage extends Command
             'created_at' => Carbon::now(),
         ]);
 
-        return 0;
+        return Command::SUCCESS;
     }
 
     /**
@@ -121,7 +128,7 @@ class PostImage extends Command
         );
     }
 
-    private function getTwitterStatusContent(ImageData $imageData): string
+    private function getTwitterStatusContent(): string
     {
         return env('TWITTER_STATUS_HASHTAGS');
     }
@@ -135,14 +142,14 @@ class PostImage extends Command
         $imageMedia = $twitterConnection->upload('media/upload', ['media' => Arr::get($temporaryFileMetaData, 'uri')]);
 
         $tweet = $twitterConnection->post('statuses/update', [
-            'status' => $this->getTwitterStatusContent($imageData),
+            'status' => $this->getTwitterStatusContent(),
             'media_ids' => $imageMedia->media_id,
         ]);
 
         $twitterUserPostUrl = $this->getTwitterUserPostUrlForTweet($tweet);
 
         try {
-            $sourceContent = '\n\n' . 'Source: ' . $imageData->getSource();
+            $sourceContent = "\n\nSource: {$imageData->getSource()}";
             $content = $twitterUserPostUrl . (empty($imageData->getSource()) ? '' : $sourceContent);
 
             $discordMessage = new DiscordTextMessage();
@@ -155,5 +162,10 @@ class PostImage extends Command
         } catch (DiscordInvalidResponseException $e) {
             Log::error("Couldn't post to Discord: {$twitterUserPostUrl}");
         }
+    }
+
+    private function isDryRun(): bool
+    {
+        $this->option('dry');
     }
 }
