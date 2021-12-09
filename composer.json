@@ -37,7 +37,6 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
         "ide-helper": [
-            "@php artisan ide-helper:generate",
             "@php artisan ide-helper:meta"
         ]
     },
