@@ -128,9 +128,11 @@ class PostImage extends Command
         );
     }
 
-    private function getTwitterStatusContent(): string
+    private function getTwitterStatusContent(ImageData $imageData): string
     {
-        return env('TWITTER_STATUS_HASHTAGS');
+        $sourceContent = "\n\nSource: {$imageData->getSource()}";
+
+        return env('TWITTER_STATUS_HASHTAGS') . (empty($imageData->getSource()) ? '' : $sourceContent);
     }
 
     private function postImageOnTwitterAndDiscord(ImageData $imageData): void {
@@ -142,20 +144,17 @@ class PostImage extends Command
         $imageMedia = $twitterConnection->upload('media/upload', ['media' => Arr::get($temporaryFileMetaData, 'uri')]);
 
         $tweet = $twitterConnection->post('statuses/update', [
-            'status' => $this->getTwitterStatusContent(),
+            'status' => $this->getTwitterStatusContent($imageData),
             'media_ids' => $imageMedia->media_id,
         ]);
 
         $twitterUserPostUrl = $this->getTwitterUserPostUrlForTweet($tweet);
 
         try {
-            $sourceContent = "\n\nSource: {$imageData->getSource()}";
-            $content = $twitterUserPostUrl . (empty($imageData->getSource()) ? '' : $sourceContent);
-
             $discordMessage = new DiscordTextMessage();
             $discordMessage->setUsername('Astolfo Image Poster');
             $discordMessage->setAvatar('https://i.imgur.com/W7Dv18c.jpg');
-            $discordMessage->setContent($content);
+            $discordMessage->setContent($twitterUserPostUrl);
 
             $discordWebhook = new DiscordWebhook(env('DISCORD_WEBHOOK_URL'));
             $discordWebhook->send($discordMessage);
@@ -166,6 +165,6 @@ class PostImage extends Command
 
     private function isDryRun(): bool
     {
-        $this->option('dry');
+        return $this->option('dry');
     }
 }
