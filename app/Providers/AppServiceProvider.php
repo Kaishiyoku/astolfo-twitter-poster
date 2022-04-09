@@ -13,7 +13,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        config(['logging.channels.daily.path' => \Phar::running()
+            ? dirname(\Phar::running(false)) . '/storage/logs/astolfo-twitter-poster.log'
+            : storage_path('logs/astolfo-twitter-poster.log')
+        ]);
     }
 
     /**
