@@ -17,10 +17,14 @@
     ],
     "require": {
         "php": "^8.0",
+        "abraham/twitteroauth": "^4.0",
+        "guzzlehttp/guzzle": "^7.4",
         "illuminate/database": "^9.0",
+        "illuminate/http": "^9.0",
         "illuminate/log": "^9.0",
         "laravel-zero/framework": "^9.0",
-        "nunomaduro/termwind": "^1.3"
+        "nunomaduro/termwind": "^1.3",
+        "woeler/phpdiscord": "^3.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
