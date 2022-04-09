@@ -87,7 +87,7 @@
     ln -s {{ $path }}/.env {{ $release }}/.env
     echo "Environment file set up"
     ln -s {{ $path }}/database/astolfo-twitter-poster.sqlite {{ $release }}/database/astolfo-twitter-poster.sqlite
-    echo "Environment file set up"
+    echo "Database file set up"
 @endtask
 
 @task('deployment_composer')
