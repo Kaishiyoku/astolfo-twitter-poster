@@ -86,7 +86,7 @@
     echo "Storage directories set up"
     ln -s {{ $path }}/.env {{ $release }}/.env
     echo "Environment file set up"
-    ln -s {{ $path }}/database {{ $release }}/database
+    ln -s {{ $path }}/database/database.sqlite {{ $release }}/database/database.sqlite
     echo "Database file set up"
 @endtask
 
