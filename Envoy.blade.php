@@ -49,7 +49,13 @@
 
 @story('deploy')
     deployment_start
-
+    change_storage_owner_to_deployment_user
+    deployment_links
+    deployment_composer
+    deployment_migrate
+    deployment_finish
+    change_storage_owner_to_www_data
+    deployment_option_cleanup
 @endstory
 
 @story('rollback')
@@ -80,6 +86,8 @@
     echo "Storage directories set up"
     ln -s {{ $path }}/.env {{ $release }}/.env
     echo "Environment file set up"
+    ln -s {{ $path }}/database {{ $release }}/database.sqlite
+    echo "Database file set up"
 @endtask
 
 @task('deployment_composer')
@@ -92,28 +100,7 @@
     php {{ $release }}/artisan migrate --env={{ $env }} --force --no-interaction
 @endtask
 
-@task('deployment_npm')
-    echo "Installing npm dependencies..."
-    cd {{ $release }}
-    npm install --no-audit --no-fund --no-optional
-    echo "Running npm..."
-    npm run {{ $env }} --silent
-@endtask
-
-@task('deployment_cache')
-    php {{ $release }}/artisan view:clear --quiet
-    php {{ $release }}/artisan cache:clear --quiet
-    php {{ $release }}/artisan config:cache --quiet
-    php {{ $release }}/artisan route:cache --quiet
-    php {{ $release }}/artisan view:cache --quiet
-    echo "Cache cleared"
-
-    sudo chown -R www-data:www-data {{ $release }}/storage/*
-@endtask
-
 @task('deployment_finish')
-    php {{ $release }}/artisan storage:link
-    echo "Storage symbolic links created"
     ln -nfs {{ $release }} {{ $path }}/current
     echo "Deployment ({{ $date }}) finished"
 @endtask
