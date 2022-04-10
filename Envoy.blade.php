@@ -14,6 +14,7 @@
     $server = $_ENV['DEPLOY_SERVER'] ?? null;
     $repo = $_ENV['DEPLOY_REPOSITORY'] ?? null;
     $path = $_ENV['DEPLOY_PATH'] ?? null;
+    $healthUrl = $_ENV['DEPLOY_HEALTH_CHECK'] ?? null;
 
     if (substr($path, 0, 1) !== '/') {
         throw new Exception('Careful - your deployment path does not begin with /');
@@ -53,13 +54,17 @@
     deployment_links
     deployment_composer
     deployment_migrate
+    deployment_cache
+    deployment_npm
     deployment_finish
     change_storage_owner_to_www_data
+    health_check
     deployment_option_cleanup
 @endstory
 
 @story('rollback')
     deployment_rollback
+    health_check
 @endstory
 
 @story('list_releases')
@@ -86,8 +91,6 @@
     echo "Storage directories set up"
     ln -s {{ $path }}/.env {{ $release }}/.env
     echo "Environment file set up"
-    ln -s {{ $path }}/database/astolfo-twitter-poster.sqlite {{ $release }}/database/astolfo-twitter-poster.sqlite
-    echo "Database file set up"
 @endtask
 
 @task('deployment_composer')
@@ -97,10 +100,31 @@
 @endtask
 
 @task('deployment_migrate')
-    php {{ $release }}/astolfo-twitter-poster migrate --env={{ $env }} --force --no-interaction
+    php {{ $release }}/artisan migrate --env={{ $env }} --force --no-interaction
+@endtask
+
+@task('deployment_npm')
+    echo "Installing npm dependencies..."
+    cd {{ $release }}
+    npm install --no-audit --no-fund --no-optional
+    echo "Running npm..."
+    npm run {{ $env }} --silent
+@endtask
+
+@task('deployment_cache')
+    php {{ $release }}/artisan view:clear --quiet
+    php {{ $release }}/artisan cache:clear --quiet
+    php {{ $release }}/artisan config:cache --quiet
+    php {{ $release }}/artisan route:cache --quiet
+    php {{ $release }}/artisan view:cache --quiet
+    echo "Cache cleared"
+
+    sudo chown -R www-data:www-data {{ $release }}/storage/*
 @endtask
 
 @task('deployment_finish')
+    php {{ $release }}/artisan storage:link
+    echo "Storage symbolic links created"
     ln -nfs {{ $release }} {{ $path }}/current
     echo "Deployment ({{ $date }}) finished"
 @endtask
@@ -123,6 +147,19 @@
     @if (isset($cleanup) && $cleanup)
         find . -maxdepth 1 -name "20*" | sort | head -n -4 | xargs rm -Rf
         echo "Cleaned up old deployments"
+    @endif
+@endtask
+
+
+@task('health_check')
+    @if (! empty($healthUrl))
+        if [ "$(curl --write-out "%{http_code}\n" --silent --output /dev/null {{ $healthUrl }})" == "200" ]; then
+            printf "\033[0;32mHealth check to {{ $healthUrl }} OK\033[0m\n"
+        else
+            printf "\033[1;31mHealth check to {{ $healthUrl }} FAILED\033[0m\n"
+        fi
+    @else
+        echo "No health check set"
     @endif
 @endtask
 
