@@ -25,6 +25,8 @@
     $branch = isset($branch) ? $branch : 'master';
     $path = rtrim($path, '/');
     $release = $path . '/releases/' . $date;
+
+    $buildVersion = $date;
 @endsetup
 
 @servers(['web' => $server])
@@ -53,6 +55,7 @@
     deployment_links
     deployment_composer
     deployment_migrate
+    deployment_build
     deployment_finish
     change_storage_owner_to_www_data
     deployment_option_cleanup
@@ -98,6 +101,10 @@
 
 @task('deployment_migrate')
     php {{ $release }}/astolfo-twitter-poster migrate --env={{ $env }} --force --no-interaction
+@endtask
+
+@task('deployment_build')
+    php {{ $release }}/astolfo-twitter-poster app:build astolfo-twitter-poster --build-version={{ $buildVersion }}
 @endtask
 
 @task('deployment_finish')
