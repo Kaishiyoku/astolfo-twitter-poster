@@ -55,7 +55,6 @@
     deployment_composer
     deployment_migrate
     deployment_cache
-    deployment_npm
     deployment_finish
     change_storage_owner_to_www_data
     health_check
@@ -101,14 +100,6 @@
 
 @task('deployment_migrate')
     php {{ $release }}/artisan migrate --env={{ $env }} --force --no-interaction
-@endtask
-
-@task('deployment_npm')
-    echo "Installing npm dependencies..."
-    cd {{ $release }}
-    npm install --no-audit --no-fund --no-optional
-    echo "Running npm..."
-    npm run {{ $env }} --silent
 @endtask
 
 @task('deployment_cache')
