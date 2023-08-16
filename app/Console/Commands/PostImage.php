@@ -68,8 +68,8 @@ class PostImage extends Command
      */
     private function getRandomImageData(): ImageData
     {
-        $baseUrl = config('astolfo.base_url');
-        $jsonData = Http::get("{$baseUrl}/api/v1/images/random/safe")->json();
+        $baseUrl = config('astolfo.api_base_url');
+        $jsonData = Http::get("{$baseUrl}images/random/safe")->json();
 
         $imageData = ImageData::fromJson($jsonData);
 
