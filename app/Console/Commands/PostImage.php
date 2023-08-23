@@ -68,11 +68,11 @@ class PostImage extends Command
      */
     private function getRandomImageData(): ImageData
     {
-        $baseUrl = config('astolfo.api_base_url');
+        $baseUrl = config('astolfo.base_url');
         $query = Arr::query([
             'rating' => 'safe',
         ]);
-        $jsonData = Http::get("{$baseUrl}images/random?{$query}")->json();
+        $jsonData = Http::get("{$baseUrl}/api/images/random?{$query}")->json();
 
         $imageData = ImageData::fromJson($jsonData);
 
@@ -89,17 +89,20 @@ class PostImage extends Command
     {
         $twitterUserName = config('twitter.user_name');
 
-        return "https://twitter.com/{$twitterUserName}/status/{$tweet->id}";
+        return "https://twitter.com/{$twitterUserName}/status/{$tweet->data->id}";
     }
 
     private function getTwitterConnection(): TwitterOAuth
     {
-        return new TwitterOAuth(
+        $connection = new TwitterOAuth(
             config('twitter.api_consumer_key'),
             config('twitter.api_consumer_secret_key'),
             config('twitter.api_access_token'),
             config('twitter.api_access_token_secret')
         );
+        $connection->setApiVersion('2');
+
+        return $connection;
     }
 
     private function getTwitterStatusContent(ImageData $imageData): string
@@ -116,12 +119,16 @@ class PostImage extends Command
         $temporaryFileMetaData = stream_get_meta_data($temporaryFile);
 
         $twitterConnection = $this->getTwitterConnection();
+        $twitterConnection->setApiVersion('1.1');
         $imageMedia = $twitterConnection->upload('media/upload', ['media' => Arr::get($temporaryFileMetaData, 'uri')]);
 
-        $tweet = $twitterConnection->post('statuses/update', [
-            'status' => $this->getTwitterStatusContent($imageData),
-            'media_ids' => $imageMedia->media_id,
-        ]);
+        $twitterConnection->setApiVersion('2');
+        $tweet = $twitterConnection->post('tweets', [
+            'text' => $this->getTwitterStatusContent($imageData),
+            'media' => [
+                'media_ids' => [(string) $imageMedia->media_id],
+            ],
+        ], true);
 
         $twitterUserPostUrl = $this->getTwitterUserPostUrlForTweet($tweet);
 
